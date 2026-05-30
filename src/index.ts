@@ -5,7 +5,6 @@ import { Console, Context, Effect, Layer, Schedule } from "effect"
 
 type TravelCommand =
   | { readonly _tag: "Weather"; readonly city: string }
-  | { readonly _tag: "Flight"; readonly from: string; readonly to: string }
   | { readonly _tag: "Packing"; readonly destination: string }
   | { readonly _tag: "Currency"; readonly code: string }
   | { readonly _tag: "Help" }
@@ -78,12 +77,11 @@ const usage = `travel command center
 
 Usage:
   travel weather <city>
-  travel flight <from> <to>
   travel packing <destination>
   travel currency <code>`
 
 const parseCommand = (args: ReadonlyArray<string>): Effect.Effect<TravelCommand, CliError> => {
-  const [command, firstArg, secondArg] = args
+  const [command, firstArg] = args
 
   switch (command) {
     case undefined:
@@ -96,11 +94,6 @@ const parseCommand = (args: ReadonlyArray<string>): Effect.Effect<TravelCommand,
       return firstArg === undefined
         ? Effect.fail(new CliError("Missing city for weather command."))
         : Effect.succeed({ _tag: "Weather", city: firstArg })
-
-    case "flight":
-      return firstArg === undefined || secondArg === undefined
-        ? Effect.fail(new CliError("Missing airport codes for flight command."))
-        : Effect.succeed({ _tag: "Flight", from: firstArg, to: secondArg })
 
     case "packing":
       return firstArg === undefined
@@ -390,7 +383,6 @@ const runCommand = (command: TravelCommand): Effect.Effect<string, never, CacheS
       return Effect.succeed(usage)
     case "Weather":
       return runWeather(command.city).pipe(Effect.map(renderReport))
-    case "Flight":
     case "Packing":
     case "Currency":
       return Effect.succeed(renderReport(notImplementedReport(command)))
