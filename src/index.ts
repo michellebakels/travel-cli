@@ -292,16 +292,35 @@ const weatherFallback = (city: string, reason: string): WeatherData => ({
   observedAt: new Date().toISOString()
 })
 
+const formatTemperature = (celsius: number): string => {
+  const fahrenheit = (celsius * 9) / 5 + 32
+
+  return `${Math.round(celsius)}C / ${Math.round(fahrenheit)}F`
+}
+
+const formatObservedAt = (observedAt: string): string => {
+  const date = new Date(observedAt)
+
+  if (Number.isNaN(date.getTime())) {
+    return observedAt
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(date)
+}
+
 const weatherReport = (weather: WeatherData, source: ReportSource): TravelReport => ({
   title: `Weather for ${weather.city}, ${weather.country}`,
-  summary: `${weather.condition}, ${Math.round(weather.temperatureC)}C`,
+  summary: `${weather.condition}, ${formatTemperature(weather.temperatureC)}`,
   source,
   sections: [
     {
       label: "Current",
       lines: [
-        `Temperature: ${weather.temperatureC}C`,
-        `Feels like: ${weather.feelsLikeC}C`,
+        `Temperature: ${formatTemperature(weather.temperatureC)}`,
+        `Feels like: ${formatTemperature(weather.feelsLikeC)}`,
         `Humidity: ${weather.humidity}%`,
         `Wind: ${weather.windKph} km/h`
       ]
@@ -309,7 +328,7 @@ const weatherReport = (weather: WeatherData, source: ReportSource): TravelReport
     {
       label: "Meta",
       lines: [
-        `Observed at: ${weather.observedAt}`,
+        `Observed at: ${formatObservedAt(weather.observedAt)}`,
         `Source: ${source}`
       ]
     }
