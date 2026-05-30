@@ -1,18 +1,27 @@
 {
+  "name": "travel-cli",
+  "version": "1.0.0",
+  "description": "A travel command center CLI built while learning Effect.",
+  "type": "module",
+  "bin": {
+    "travel": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node ./dist/index.js",
+    "test": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "effect": "^3.21.2"
   },
-  "name": "travel-cli",
-  "version": "1.0.0",
-  "main": "index.js",
   "devDependencies": {
     "typescript": "^6.0.3"
   },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "description": ""
+  "license": "ISC"
 }
