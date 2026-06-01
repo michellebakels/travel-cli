@@ -2,10 +2,12 @@ import { Effect } from "effect"
 import { CacheService } from "./cache.js"
 import { type CurrencyConversion, CurrencyService, runCurrency } from "./currency.js"
 import { renderReport, type TravelReport } from "./report.js"
+import { runTime, TimeService } from "./time.js"
 import { runWeather, WeatherService } from "./weather.js"
 
 type TravelCommand =
   | { readonly _tag: "Weather"; readonly city: string }
+  | { readonly _tag: "Time"; readonly place: string }
   | { readonly _tag: "Packing"; readonly destination: string }
   | { readonly _tag: "Currency"; readonly conversion: CurrencyConversion }
   | { readonly _tag: "Help" }
@@ -20,6 +22,7 @@ export const usage = `travel command center
 
 Usage:
   travel weather <city>
+  travel time <place>
   travel packing <destination>
   travel currency <code>
   travel currency <amount> <code>
@@ -79,6 +82,14 @@ export const parseCommand = (args: ReadonlyArray<string>): Effect.Effect<TravelC
         ? Effect.fail(new CliError("Missing city for weather command."))
         : Effect.succeed({ _tag: "Weather", city: firstArg })
 
+    case "time": {
+      const place = args.slice(1).join(" ").trim()
+
+      return place.length === 0
+        ? Effect.fail(new CliError("Missing place for time command."))
+        : Effect.succeed({ _tag: "Time", place })
+    }
+
     case "packing":
       return firstArg === undefined
         ? Effect.fail(new CliError("Missing destination for packing command."))
@@ -92,24 +103,26 @@ export const parseCommand = (args: ReadonlyArray<string>): Effect.Effect<TravelC
   }
 }
 
-const notImplementedReport = (command: Exclude<TravelCommand, { readonly _tag: "Weather" } | { readonly _tag: "Currency" } | { readonly _tag: "Help" }>): TravelReport => ({
+const notImplementedReport = (command: Exclude<TravelCommand, { readonly _tag: "Weather" } | { readonly _tag: "Time" } | { readonly _tag: "Currency" } | { readonly _tag: "Help" }>): TravelReport => ({
   title: `${command._tag} is not implemented yet`,
-  summary: "We are building this CLI one command at a time. Weather and currency work first.",
+  summary: "We are building this CLI one command at a time. Weather, time, and currency work first.",
   source: "fallback",
   sections: [
     {
       label: "Next",
-      lines: ["Run: travel weather miami", "Run: travel currency ars"]
+      lines: ["Run: travel weather miami", "Run: travel time tokyo", "Run: travel currency ars"]
     }
   ]
 })
 
-export const runCommand = (command: TravelCommand): Effect.Effect<string, never, CacheService | WeatherService | CurrencyService> => {
+export const runCommand = (command: TravelCommand): Effect.Effect<string, never, CacheService | WeatherService | TimeService | CurrencyService> => {
   switch (command._tag) {
     case "Help":
       return Effect.succeed(usage)
     case "Weather":
       return runWeather(command.city).pipe(Effect.map(renderReport))
+    case "Time":
+      return runTime(command.place).pipe(Effect.map(renderReport))
     case "Currency":
       return runCurrency(command.conversion).pipe(Effect.map(renderReport))
     case "Packing":
