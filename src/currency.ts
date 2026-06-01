@@ -1,5 +1,7 @@
-import { Context, Effect, Layer, Schedule } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { CacheService } from "./cache.js"
+import { fetchJson } from "./http.js"
+import { isRecord } from "./json.js"
 import { formatObservedAt, type ReportSource, type TravelReport } from "./report.js"
 
 type CurrencyData = {
@@ -33,27 +35,10 @@ const currencyCacheTtlMs = 6 * 60 * 60 * 1000
 export const normalizeCurrencyCode = (code: string): string => code.trim().toUpperCase()
 
 const fetchCurrencyJson = (url: string): Effect.Effect<unknown, CurrencyError> =>
-  Effect.tryPromise({
-    try: async () => {
-      const response = await fetch(url)
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
-      }
-
-      return await response.json()
-    },
-    catch: (cause) => new CurrencyError(`Currency service request failed: ${String(cause)}`)
-  }).pipe(
-    Effect.timeoutFail({
-      duration: "8 seconds",
-      onTimeout: () => new CurrencyError("Currency service timed out.")
-    }),
-    Effect.retry(Schedule.recurs(1))
-  )
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null
+  fetchJson(url, {
+    service: "Currency service",
+    makeError: (message) => new CurrencyError(message)
+  })
 
 const currencyStringFrom = (value: unknown, field: string): Effect.Effect<string, CurrencyError> =>
   typeof value === "string"

@@ -1,5 +1,7 @@
-import { Context, Effect, Layer, Schedule } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { CacheService } from "./cache.js"
+import { fetchJson as fetchJsonRequest } from "./http.js"
+import { isRecord } from "./json.js"
 import { formatObservedAt, type ReportSource, type TravelReport } from "./report.js"
 
 type WeatherData = {
@@ -29,27 +31,10 @@ export class WeatherService extends Context.Tag("WeatherService")<
 const weatherCacheTtlMs = 30 * 60 * 1000
 
 const fetchJson = (url: string): Effect.Effect<unknown, WeatherError> =>
-  Effect.tryPromise({
-    try: async () => {
-      const response = await fetch(url)
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
-      }
-
-      return await response.json()
-    },
-    catch: (cause) => new WeatherError(`Weather service request failed: ${String(cause)}`)
-  }).pipe(
-    Effect.timeoutFail({
-      duration: "8 seconds",
-      onTimeout: () => new WeatherError("Weather service timed out.")
-    }),
-    Effect.retry(Schedule.recurs(1))
-  )
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null
+  fetchJsonRequest(url, {
+    service: "Weather service",
+    makeError: (message) => new WeatherError(message)
+  })
 
 const numberFrom = (value: unknown, field: string): Effect.Effect<number, WeatherError> =>
   typeof value === "number"

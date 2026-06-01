@@ -1,5 +1,7 @@
-import { Context, Effect, Layer, Schedule } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { CacheService } from "./cache.js"
+import { fetchJson } from "./http.js"
+import { isRecord } from "./json.js"
 import { type ReportSource, type TravelReport } from "./report.js"
 
 type TimeData = {
@@ -26,33 +28,16 @@ export class TimeService extends Context.Tag("TimeService")<
 
 const timeCacheTtlMs = 30 * 1000
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null
-
 const stringFrom = (value: unknown, field: string): Effect.Effect<string, TimeError> =>
   typeof value === "string"
     ? Effect.succeed(value)
     : Effect.fail(new TimeError(`Time response is missing ${field}.`))
 
 const fetchTimeJson = (url: string): Effect.Effect<unknown, TimeError> =>
-  Effect.tryPromise({
-    try: async () => {
-      const response = await fetch(url)
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
-      }
-
-      return await response.json()
-    },
-    catch: (cause) => new TimeError(`Time service request failed: ${String(cause)}`)
-  }).pipe(
-    Effect.timeoutFail({
-      duration: "8 seconds",
-      onTimeout: () => new TimeError("Time service timed out.")
-    }),
-    Effect.retry(Schedule.recurs(1))
-  )
+  fetchJson(url, {
+    service: "Time service",
+    makeError: (message) => new TimeError(message)
+  })
 
 const findPlace = (place: string) =>
   fetchTimeJson(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1&language=en&format=json`).pipe(
