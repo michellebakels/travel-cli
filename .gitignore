@@ -16,6 +16,7 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+.opencode/tui.json
 
 # runtime cache
 .travel-cache.json
