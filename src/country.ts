@@ -4,7 +4,8 @@ import { fetchJson } from "./http.js"
 import { isRecord } from "./json.js"
 import { type ReportSource, type TravelReport } from "./report.js"
 
-type CountryData = {
+export type CountryData = {
+  readonly code: string
   readonly name: string
   readonly officialName: string
   readonly capital: string
@@ -83,6 +84,7 @@ const countryFromJson = (json: unknown): Effect.Effect<CountryData, CountryError
     : "Unknown"
 
   return Effect.all({
+    code: stringFrom(country.cca2, "country code"),
     name: stringFrom(country.name.common, "common name"),
     officialName: stringFrom(country.name.official, "official name"),
     region: stringFrom(country.region, "region"),
@@ -102,7 +104,7 @@ const countryFromJson = (json: unknown): Effect.Effect<CountryData, CountryError
 }
 
 const findCountry = (country: string): Effect.Effect<CountryData, CountryError> => {
-  const fields = "name,capital,region,subregion,population,languages,currencies,timezones,car,flag"
+  const fields = "cca2,name,capital,region,subregion,population,languages,currencies,timezones,car,flag"
 
   return fetchCountryJson(`https://restcountries.com/v3.1/name/${encodeURIComponent(country)}?fields=${fields}`).pipe(
     Effect.flatMap(countryFromJson)

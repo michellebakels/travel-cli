@@ -1,4 +1,5 @@
 import { Effect } from "effect"
+import { AdvisoryService, runAdvisory } from "./advisory.js"
 import { CacheService } from "./cache.js"
 import { CountryService, runCountry } from "./country.js"
 import { type CurrencyConversion, CurrencyService, runCurrency } from "./currency.js"
@@ -10,6 +11,7 @@ type TravelCommand =
   | { readonly _tag: "Weather"; readonly city: string }
   | { readonly _tag: "Time"; readonly place: string }
   | { readonly _tag: "Country"; readonly country: string }
+  | { readonly _tag: "Advisory"; readonly country: string; readonly full: boolean }
   | { readonly _tag: "Packing"; readonly destination: string }
   | { readonly _tag: "Currency"; readonly conversion: CurrencyConversion }
   | { readonly _tag: "Help" }
@@ -26,6 +28,7 @@ Usage:
   travel weather <city>
   travel time <place>
   travel country <country>
+  travel advisory <country> [--full]
   travel packing <destination>
   travel currency <code>
   travel currency <amount> <code>
@@ -101,6 +104,16 @@ export const parseCommand = (args: ReadonlyArray<string>): Effect.Effect<TravelC
         : Effect.succeed({ _tag: "Country", country })
     }
 
+    case "advisory": {
+      const commandArgs = args.slice(1)
+      const full = commandArgs.includes("--full")
+      const country = commandArgs.filter((arg) => arg !== "--full").join(" ").trim()
+
+      return country.length === 0
+        ? Effect.fail(new CliError("Missing country for advisory command."))
+        : Effect.succeed({ _tag: "Advisory", country, full })
+    }
+
     case "packing":
       return firstArg === undefined
         ? Effect.fail(new CliError("Missing destination for packing command."))
@@ -114,19 +127,19 @@ export const parseCommand = (args: ReadonlyArray<string>): Effect.Effect<TravelC
   }
 }
 
-const notImplementedReport = (command: Exclude<TravelCommand, { readonly _tag: "Weather" } | { readonly _tag: "Time" } | { readonly _tag: "Country" } | { readonly _tag: "Currency" } | { readonly _tag: "Help" }>): TravelReport => ({
+const notImplementedReport = (command: Exclude<TravelCommand, { readonly _tag: "Weather" } | { readonly _tag: "Time" } | { readonly _tag: "Country" } | { readonly _tag: "Advisory" } | { readonly _tag: "Currency" } | { readonly _tag: "Help" }>): TravelReport => ({
   title: `${command._tag} is not implemented yet`,
-  summary: "We are building this CLI one command at a time. Weather, time, country, and currency work first.",
+  summary: "We are building this CLI one command at a time. Weather, time, country, advisory, and currency work first.",
   source: "fallback",
   sections: [
     {
       label: "Next",
-      lines: ["Run: travel weather miami", "Run: travel time tokyo", "Run: travel country argentina", "Run: travel currency ars"]
+      lines: ["Run: travel weather miami", "Run: travel time tokyo", "Run: travel country argentina", "Run: travel advisory argentina", "Run: travel currency ars"]
     }
   ]
 })
 
-export const runCommand = (command: TravelCommand): Effect.Effect<string, never, CacheService | WeatherService | TimeService | CountryService | CurrencyService> => {
+export const runCommand = (command: TravelCommand): Effect.Effect<string, never, CacheService | WeatherService | TimeService | CountryService | AdvisoryService | CurrencyService> => {
   switch (command._tag) {
     case "Help":
       return Effect.succeed(usage)
@@ -136,6 +149,8 @@ export const runCommand = (command: TravelCommand): Effect.Effect<string, never,
       return runTime(command.place).pipe(Effect.map(renderReport))
     case "Country":
       return runCountry(command.country).pipe(Effect.map(renderReport))
+    case "Advisory":
+      return runAdvisory(command.country, command.full).pipe(Effect.map(renderReport))
     case "Currency":
       return runCurrency(command.conversion).pipe(Effect.map(renderReport))
     case "Packing":
