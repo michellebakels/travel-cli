@@ -6,10 +6,11 @@ import { CacheServiceLive } from "./cache.js"
 import { parseCommand, runCommand, usage } from "./cli.js"
 import { CountryServiceLive } from "./country.js"
 import { CurrencyServiceLive } from "./currency.js"
+import { HolidayServiceLive } from "./holidays.js"
 import { TimeServiceLive } from "./time.js"
 import { WeatherServiceLive } from "./weather.js"
 
-const AppLayer = Layer.mergeAll(CacheServiceLive, WeatherServiceLive, TimeServiceLive, CountryServiceLive, AdvisoryServiceLive, CurrencyServiceLive)
+const AppLayer = Layer.mergeAll(CacheServiceLive, WeatherServiceLive, TimeServiceLive, CountryServiceLive, AdvisoryServiceLive, HolidayServiceLive, CurrencyServiceLive)
 
 const program = parseCommand(process.argv.slice(2)).pipe(
   Effect.flatMap(runCommand),

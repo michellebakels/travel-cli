@@ -3,6 +3,7 @@ import { AdvisoryService, runAdvisory } from "./advisory.js"
 import { CacheService } from "./cache.js"
 import { CountryService, runCountry } from "./country.js"
 import { type CurrencyConversion, CurrencyService, runCurrency } from "./currency.js"
+import { HolidayService, runHolidays } from "./holidays.js"
 import { renderReport, type TravelReport } from "./report.js"
 import { runTime, TimeService } from "./time.js"
 import { runWeather, WeatherService } from "./weather.js"
@@ -12,6 +13,7 @@ type TravelCommand =
   | { readonly _tag: "Time"; readonly place: string }
   | { readonly _tag: "Country"; readonly country: string }
   | { readonly _tag: "Advisory"; readonly country: string; readonly full: boolean }
+  | { readonly _tag: "Holidays"; readonly country: string; readonly year: number }
   | { readonly _tag: "Packing"; readonly destination: string }
   | { readonly _tag: "Currency"; readonly conversion: CurrencyConversion }
   | { readonly _tag: "Help" }
@@ -29,6 +31,7 @@ Usage:
   travel time <place>
   travel country <country>
   travel advisory <country> [--full]
+  travel holidays <country> [year]
   travel packing <destination>
   travel currency <code>
   travel currency <amount> <code>
@@ -114,6 +117,24 @@ export const parseCommand = (args: ReadonlyArray<string>): Effect.Effect<TravelC
         : Effect.succeed({ _tag: "Advisory", country, full })
     }
 
+    case "holidays": {
+      const commandArgs = args.slice(1)
+      const lastArg = commandArgs.at(-1)
+      const hasYear = lastArg !== undefined && /^\d+$/.test(lastArg)
+      const year = hasYear ? Number(lastArg) : new Date().getFullYear()
+      const country = (hasYear ? commandArgs.slice(0, -1) : commandArgs).join(" ").trim()
+
+      if (country.length === 0) {
+        return Effect.fail(new CliError("Missing country for holidays command."))
+      }
+
+      if (!Number.isInteger(year) || year < 1970 || year > 2100) {
+        return Effect.fail(new CliError("Holiday year must be between 1970 and 2100."))
+      }
+
+      return Effect.succeed({ _tag: "Holidays", country, year })
+    }
+
     case "packing":
       return firstArg === undefined
         ? Effect.fail(new CliError("Missing destination for packing command."))
@@ -127,19 +148,19 @@ export const parseCommand = (args: ReadonlyArray<string>): Effect.Effect<TravelC
   }
 }
 
-const notImplementedReport = (command: Exclude<TravelCommand, { readonly _tag: "Weather" } | { readonly _tag: "Time" } | { readonly _tag: "Country" } | { readonly _tag: "Advisory" } | { readonly _tag: "Currency" } | { readonly _tag: "Help" }>): TravelReport => ({
+const notImplementedReport = (command: Exclude<TravelCommand, { readonly _tag: "Weather" } | { readonly _tag: "Time" } | { readonly _tag: "Country" } | { readonly _tag: "Advisory" } | { readonly _tag: "Holidays" } | { readonly _tag: "Currency" } | { readonly _tag: "Help" }>): TravelReport => ({
   title: `${command._tag} is not implemented yet`,
-  summary: "We are building this CLI one command at a time. Weather, time, country, advisory, and currency work first.",
+  summary: "We are building this CLI one command at a time. Weather, time, country, advisory, holidays, and currency work first.",
   source: "fallback",
   sections: [
     {
       label: "Next",
-      lines: ["Run: travel weather miami", "Run: travel time tokyo", "Run: travel country argentina", "Run: travel advisory argentina", "Run: travel currency ars"]
+      lines: ["Run: travel weather miami", "Run: travel time tokyo", "Run: travel country argentina", "Run: travel advisory argentina", "Run: travel holidays argentina", "Run: travel currency ars"]
     }
   ]
 })
 
-export const runCommand = (command: TravelCommand): Effect.Effect<string, never, CacheService | WeatherService | TimeService | CountryService | AdvisoryService | CurrencyService> => {
+export const runCommand = (command: TravelCommand): Effect.Effect<string, never, CacheService | WeatherService | TimeService | CountryService | AdvisoryService | HolidayService | CurrencyService> => {
   switch (command._tag) {
     case "Help":
       return Effect.succeed(usage)
@@ -151,6 +172,8 @@ export const runCommand = (command: TravelCommand): Effect.Effect<string, never,
       return runCountry(command.country).pipe(Effect.map(renderReport))
     case "Advisory":
       return runAdvisory(command.country, command.full).pipe(Effect.map(renderReport))
+    case "Holidays":
+      return runHolidays(command.country, command.year).pipe(Effect.map(renderReport))
     case "Currency":
       return runCurrency(command.conversion).pipe(Effect.map(renderReport))
     case "Packing":
