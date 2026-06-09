@@ -5,7 +5,7 @@ import { fetchJson } from "./http.js"
 import { isRecord } from "./json.js"
 import { formatObservedAt, type ReportSource, type TravelReport } from "./report.js"
 
-type AdvisoryData = {
+export type AdvisoryData = {
   readonly countryCode: string
   readonly countryName: string
   readonly level: number

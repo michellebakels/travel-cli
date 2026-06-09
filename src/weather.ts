@@ -4,7 +4,7 @@ import { fetchJson as fetchJsonRequest } from "./http.js"
 import { isRecord } from "./json.js"
 import { formatObservedAt, type ReportSource, type TravelReport } from "./report.js"
 
-type WeatherData = {
+export type WeatherData = {
   readonly city: string
   readonly country: string
   readonly temperatureC: number
